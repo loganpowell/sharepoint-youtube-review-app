@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Document</title>
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" integrity="sha384-rwoIResjU2yc3z8GV/NPeZWAv56rSmLldC3R/AZzGRnGxQQKnKkoFVhFQhNUwEyJ" crossorigin="anonymous">
+</head>
+<body>
+    <!-- bootstrap test -->
+
+
+<!-- card -->
+    <div class="card">
+      <div class="card-block">
+
+<!-- form group -->
+        <div class="form-inline">
+          <label class="sr-only" for="video-id">Video ID</label>
+          <div class="input-group mb-2 mr-sm-2 mb-sm-2">
+            <div class="input-group-addon">ID</div>
+            <input type="text" class="form-control" id="video-id" placeholder="Video ID">
+            <button type="submit" class="btn btn-primary"  id="vidID">&#10004;</button>
+          </div>
+          <label class="sr-only" for="username">Username</label>
+          <div class="input-group mb-2 mr-sm-2 mb-sm-2">
+            <div class="input-group-addon">@</div>
+            <input type="text" class="form-control" id="username" placeholder="Username">
+          </div>
+        </div>
+      </div>
+
+<!-- YouTubes -->
+      <div class="embed-responsive embed-responsive-16by9">
+        <!-- 1. The <iframe> (and video player) will replace this <div> tag. -->
+        <div id="player" ></div>
+      </div>
+
+<!-- form group -->
+      <div class="card-block">
+        <div class="form-group row">
+          <div class="input-group">
+            <!-- <label for="comment" class="col-form-label">Comment</label> -->
+            <div class="input-group-addon col-2" id="current-time"></div>
+            <textarea class="form-control col-10 mr-2" id="comment" rows="1" placeholder="Add your comments here"></textarea>
+            <button type="submit" class="btn btn-primary" style="font-size: 2em" id="commenter">&#10004;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/2.1.1/jquery.min.js"></script>
+
+    <script>
+// sharepoint highjack
+      $(document).ready(function () { ExecuteOrDelayUntilScriptLoaded("sp.js"); });
+
+      var siteUrl = '/div/cnmp/intranet/Lists/VideoLogger';
+
+      function saveComment(stamp, user, id, comment) {
+        var clientContext = new SP.ClientContext.get_current();
+        var oList = clientContext.get_web().get_lists().getByTitle('Video Logger');
+        var itemCreateInfo = new SP.ListItemCreationInformation();
+        this.oListItem = oList.addItem(itemCreateInfo);
+        oListItem.set_item('VideoLoggerTimeStamp', stamp);
+        oListItem.set_item('VideoLoggerUserName', user);
+        oListItem.set_item('VideoLoggerVideoID', id);
+        oListItem.set_item('VideoLoggerComments', comment);
+        oListItem.update();
+        clientContext.load(oListItem);
+        clientContext.executeQueryAsync(
+          Function.createDelegate(this, this.onQuerySucceeded), Function.createDelegate(this, this.onQueryFailed)
+        );
+      }
+      function onQuerySucceeded() {
+        console.log('Item created: ' + oListItem.get_id());
+      }
+      function onQueryFailed(sender, args) {
+        console.log('Request failed. ' + args.get_message() + '\n' + args.get_stackTrace());
+      }
+      // 2. This code loads the IFrame Player API code asynchronously.
+      var tag = document.createElement('script');
+
+      tag.src = "https://www.youtube.com/iframe_api";
+      var firstScriptTag = document.getElementsByTagName('script')[0];
+      firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+      // 3. This function creates an <iframe> (and YouTube player)
+      //    after the API code downloads.
+      var player;
+      var vidID = $("#video-id").val()
+      function onYouTubeIframeAPIReady() {
+        player = new YT.Player('player', {
+          height: '390',
+          width: '640',
+          videoId: vidID,
+          events: {
+            'onReady': initialize,
+            'onStateChange': onPlayerStateChange
+          }
+        });
+      }
+
+      // // 4. The API will call this function when the video player is ready.
+      function initialize(){
+        // Update the controls on load
+        updateTimerDisplay();
+        updateProgressBar();
+        // Clear any old interval.
+        clearInterval(time_update_interval);
+        // Start interval to update elapsed time display and
+        // the elapsed part of the progress bar every second.
+        time_update_interval = setInterval(function () {
+          updateTimerDisplay();
+          updateProgressBar();
+        }, 1000)
+      }
+
+      // 5. The API calls this function when the player's state changes.
+      //    The function indicates that when playing a video (state=1),
+      //    the player should play for six seconds and then stop.
+      var done = false;
+      function onPlayerStateChange(event) {
+        updateTimerDisplay();
+      }
+
+// This function is called by initialize()
+      function updateTimerDisplay(){
+        // Update current time text display.
+        $('#current-time').text(formatTime( player.getCurrentTime() ));
+      }
+
+      function formatTime(time){
+        time = Math.round(time);
+        var minutes = Math.floor(time / 60),
+        seconds = time - minutes * 60;
+        seconds = seconds < 10 ? '0' + seconds : seconds;
+        return minutes + ":" + seconds;
+      }
+
+      function toHHMMSS(time) {
+        var sec_num = parseInt(time, 10); // don't forget the second param
+        var hours   = Math.floor(sec_num / 3600);
+        var minutes = Math.floor((sec_num - (hours * 3600)) / 60);
+        var seconds = sec_num - (hours * 3600) - (minutes * 60);
+
+        if (hours   < 10) {hours   = "0"+hours;}
+        if (minutes < 10) {minutes = "0"+minutes;}
+        if (seconds < 10) {seconds = "0"+seconds;}
+        return hours+';'+minutes+';'+seconds+';00';
+      }
+
+
+      function timedComment() {
+        var x = player.getCurrentTime();
+        var y = Number(x);
+        z = Math.round(y);
+        // covert to timestamp
+        var timestampy = toHHMMSS(x)
+        console.log(timestampy);
+        var user = $("#username").val()
+        console.log(user)
+        var id = $("#video-id").val()
+        var comment = $("#comment").val()
+        saveComment(timestampy, user, id, comment)
+        $("#comment").val("")
+      }
+
+      $('#commenter').on('click', function () {
+        event.preventDefault();
+        timedComment()
+        player.playVideo();
+        console.log('commenter done')
+      });
+
+      $('#vidID').on('click', function() {
+        event.preventDefault();
+        var videoId = $('#video-id').val()
+        player.loadVideoById(videoId)
+      })
+
+
+
+
+    </script>
+
+
+  </body>
+</html>
